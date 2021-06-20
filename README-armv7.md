@@ -6,6 +6,13 @@ host using multi-arch Docker, buildx, qemu.
 The multi-arch Docker solution works well for the arm64 arch. armhf has some
 problems.
 
+To clone this file and the associated Dockerfile :
+
+```
+$ git clone https://github.com/abasty/at_dockerfiles.git
+$ git checkout experiment/armv7
+```
+
 ## Certificates problem
 
 Seems that `debian/armv7` does not install the required certificates to download
@@ -19,9 +26,10 @@ curl -kfLO "$URL";
 
 ## "Unrecognized ARM CPU architecture" problem
 
-From the main directory of this repo, build the armhf docker image :
+From the top directory of this repo, build the armhf docker image :
 
 ```
+$ git checkout experiment/armv7
 $ docker buildx build --platform linux/arm/v7 -t atsigncompany/buildimage:dart-armv7 \
   -f at-buildimage/Dockerfile .
 ```
@@ -208,6 +216,12 @@ container :
 
 ```
 $ docker cp /etc/ssl/certs/ 96facecd1419:/etc/ssl
+```
+
+And back to the container :
+
+```
+# dart pub get
 ...
 Downloading test 1.17.4...
 Downloading http 0.13.3...
@@ -253,8 +267,8 @@ Listen SSE clients
 Server launched on http://0.0.0.0:8067
 ```
 
-If we look at the `/tmp` directory, it's full of Dart temporary files that do
-not have been deleted...
+If we look at the `/tmp` directory, it's full of Dart temporary files that have
+not been deleted...
 
 ```
 # rm -rf /tmp/pub_* /tmp/JHJYUL ...
