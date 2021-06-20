@@ -54,12 +54,17 @@ RUN set -eux; \
         dir="$(dirname "$f")"; \
         mkdir -p "/runtime$dir"; \
         cp --archive --link --dereference --no-target-directory "$f" "/runtime$f"; \
-    done; \
+    done;
+
+RUN set -eux; \
     SDKARCH=$(case "$(uname -m)" in x86_64) echo "x64";; armv7l) echo "arm";;\
      aarch64) echo "arm64";; esac;); \
     SDK="dartsdk-linux-$SDKARCH-release.zip"; \
     BASEURL="https://storage.googleapis.com/dart-archive/channels"; \
     URL="$BASEURL/$DART_CHANNEL/release/$DART_VERSION/sdk/$SDK"; \
     echo "SDK: $URL" >> dart_setup.log ; \
-    curl -fLO "$URL"; \
+    curl -kfLO "$URL"; \
     unzip "$SDK" && mv dart-sdk "$DART_SDK" && rm "$SDK";
+
+RUN set -eux; \
+    git clone https://github.com/abasty/restserver.git
