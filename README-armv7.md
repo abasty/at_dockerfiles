@@ -286,4 +286,52 @@ not been deleted...
 # rm -rf /tmp/pub_* /tmp/JHJYUL ...
 ```
 
-PLEASE HELP !!! :D
+### Faking /proc/cpuinfo, "Illegal instruction(4)" problem
+
+Running a docker w/ a fake `/proc/cpuinfo`, coming from a real Orange Pi Zero
+device :
+
+```
+$ docker run -ti --platform linux/arm/v7 \
+  --mount type=bind,source=$PWD/at-buildimage/cpuinfo.OrangePiZero,target=/proc/cpuinfo \
+  atsigncompany/buildimage:dart-armv7
+root@b51addb3ea53:~# cat /proc/cpuinfo
+processor	: 0
+model name	: ARMv7 Processor rev 5 (v7l)
+BogoMIPS	: 48.00
+Features	: half thumb fastmult vfp edsp neon vfpv3 tls vfpv4 idiva idivt vfpd32 lpae evtstrm
+CPU implementer	: 0x41
+CPU architecture: 7
+CPU variant	: 0x0
+CPU part	: 0xc07
+CPU revision	: 5
+...
+```
+
+The problem here is :
+
+```
+# dart
+
+===== CRASH =====
+si_signo=Illegal instruction(4), si_code=2, si_addr=0xfae8e5a8
+version=2.13.0 (stable) (Wed May 12 12:45:49 2021 +0200) on "linux_arm"
+pid=8, thread=12, isolate_group=vm-service(0xfcf12400), isolate=vm-service(0xfcf29200)
+isolate_instructions=ffa201c0, vm_instructions=ffa201c0
+  pc 0xfae8e5a8 fp 0xfc9e4a78 Unknown symbol
+  pc 0xfae8e1f0 fp 0xfc9e4a98 Unknown symbol
+  pc 0xfae8dfc8 fp 0xfc9e4ab8 Unknown symbol
+  pc 0xfae8dbb8 fp 0xfc9e4ad8 Unknown symbol
+  pc 0xfae80a24 fp 0xfc9e4afc Unknown symbol
+  pc 0xfca81ef8 fp 0xfc9e4b74 Unknown symbol
+-- End of DumpStackTrace
+qemu: uncaught target signal 6 (Aborted) - core dumped
+Aborted (core dumped)
+```
+
+I reproduce the same problem running the official Dart SDK in `qemu-system`
+running a Debian Buster armhf kernel.
+
+### Who has seen Jessie ?
+
+TODO: Try it in Debian Jessie...
