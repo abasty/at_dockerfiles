@@ -22,6 +22,7 @@ $ git checkout experiment/armv7
   <https://github.com/moby/moby/issues/16423>
 * Filesystem inode 32 guest on 64 host (qemu): use `glibc` <= `2.27`
   <https://bugs.launchpad.net/qemu/+bug/1805913>. Debian Jessie has `2.19`
+* Illegal instruction(4) : Use `gdb` to find some clues...
 
 ## Experiments
 
