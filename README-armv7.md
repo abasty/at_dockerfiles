@@ -1,5 +1,7 @@
 # Experiments with armv7
 
+## Initial goal
+
 The goal is to build Pi/armhf Dart self-contained executables from a Linux x64
 host using multi-arch Docker, buildx, qemu.
 
@@ -13,7 +15,17 @@ $ git clone https://github.com/abasty/at_dockerfiles.git
 $ git checkout experiment/armv7
 ```
 
-## Certificates problem
+## Identified problems & possible solutions
+
+* Certificates : install the right certificates before downloading Dart SDK
+* Unrecognized ARM CPU architecture : fake Pi `/proc/cpuinfo` see
+  <https://github.com/moby/moby/issues/16423>
+* Filesystem inode 32 guest on 64 host (qemu): use `glibc` <= `2.27`
+  <https://bugs.launchpad.net/qemu/+bug/1805913>. Debian Jessie has `2.19`
+
+## Expermiments
+
+### Certificates problem
 
 Seems that `debian/armv7` does not install the required certificates to download
 the official Dart SDK packages.
@@ -24,7 +36,7 @@ To bypass this problem, we added the `-k` option to the `curl` command line :
 curl -kfLO "$URL";
 ```
 
-## "Unrecognized ARM CPU architecture" problem
+### "Unrecognized ARM CPU architecture" problem
 
 From the top directory of this repo, build the armhf docker image :
 
@@ -76,7 +88,7 @@ In `runtime/vm/cpu_arm.cc` :
   }
 ```
 
-## Building a new SDK
+### Building a new SDK
 
 I removed this fatal line and built a new Dart arm SDK **on the x64 host**,
 following instructions on :
@@ -196,7 +208,7 @@ Run "dart help <command>" for more information about a command.
 See https://dart.dev/tools/dart-tool for detailed documentation.
 ```
 
-## Return of the certificates problem
+### Return of the certificates problem
 
 There is a small Dart example in the 'restserver' folder :
 
@@ -234,7 +246,7 @@ Downloading shelf 1.1.4...
 ...
 ```
 
-## The "Deletion failed, path = 'xxx' (OS Error: Value too large for defined data type, errno = 75)" problem
+### The "Deletion failed, path = 'xxx' (OS Error: Value too large for defined data type, errno = 75)" problem
 
 Deletion failed on error, but try again :
 
