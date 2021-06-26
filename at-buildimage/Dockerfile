@@ -22,6 +22,7 @@ RUN set -eux; \
         unzip \
         dnsutils \
         git \
+        file \
     ; \
     rm -rf /var/lib/apt/lists/*; \
     case "$(uname -m)" in \
@@ -63,7 +64,7 @@ RUN set -eux; \
     BASEURL="https://storage.googleapis.com/dart-archive/channels"; \
     URL="$BASEURL/$DART_CHANNEL/release/$DART_VERSION/sdk/$SDK"; \
     echo "SDK: $URL" >> dart_setup.log ; \
-    curl -kfLO "$URL"; \
+    curl -fLO "$URL"; \
     unzip "$SDK" && mv dart-sdk "$DART_SDK" && rm "$SDK";
 
 RUN set -eux; \
