@@ -15,6 +15,12 @@ $ git clone https://github.com/abasty/at_dockerfiles.git
 $ git checkout experiment/armv7
 ```
 
+## Quick start
+
+```
+$ docker run -ti --platform linux/arm/v7 abasty/stretch-dart-armv7-qemu:2.14.0-250.0.dev
+```
+
 ## Successful armv7 build in Docker
 
 Identified so far:
@@ -45,6 +51,14 @@ $ docker run -ti dart-armv7-qemu
    is `2.14.0-250.0.dev`.
 
 3. Build and run the example (see "Building the example" bellow).
+
+## Use the local Docker file
+
+```
+$ docker buildx build --platform linux/arm/v7 -t dart-armv7-qemu-local \
+  -f at-buildimage/Dockerfile-armhf-qemu .
+$ docker run -ti dart-armv7-qemu-local
+```
 
 ## Building a new SDK
 
