@@ -19,28 +19,36 @@ $ git checkout experiment/armv7
 
 Identified so far:
 
-* Bug on debian:buster about certificates
-* Bug on libc6 >= 2.28 (stat files on q-emulated 32bits guest running on 64bits
-  host)
+* Bug on `debian:buster` about certificates
+* Bug on `glibc` >= 2.28 (`stat` files on q-emulated 32bits guest running on
+  64bits host)
 * Problem on Dart SDK configuration for arm32 on emulated guest.
 
 Solution in the mean time :
 
-* Using debian:stretch addresses certificates problems and libc6 version (2.24).
-  Dart needs >= 2.23.
+* Using `debian:stretch` addresses certificates problems and `glibc` version
+  (2.24). Dart needs >= 2.23.
 * Build the Dart SDK removing the "FATAL("Unrecognized ARM CPU architecture.");"
   line.
 
 The example exe has successfully been ran and tested on a real OrangePi Zero.
 
-See bellow details about problems, building Dart SDK, example. The associated
-Dockerfile is debian:stretch based.
+See bellow details about problems, **building Dart SDK**, example. The
+associated Dockerfile is `debian:stretch` based.
 
 Things to do :
 
-* Fill bug about certificates on debian:buster?
-* Wait about libc6 bug fix?
-* Ask Dart team to provide and maintain a Pi/armv7 qemu Dart package?
+* Fill bug about certificates on `debian:buster`?
+* Wait about `glibc` bug fix?
+* Ask the Dart team how to manage SDK versions (fetch, git tags?)
+* Ask the Dart team to provide and maintain a `qemu/pi/armv7` Dart package?
+
+To build the docker image :
+
+```
+$ docker buildx build --platform linux/arm/v7 -t dart-armv7-qemu \
+  -f at-buildimage/Dockerfile .
+```
 
 ## Identified problems & possible solutions
 
