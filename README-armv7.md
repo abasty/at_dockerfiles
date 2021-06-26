@@ -24,33 +24,180 @@ Identified so far:
   64bits host)
 * Problem on Dart SDK configuration for arm32 on emulated guest.
 
-Solution in the mean time :
+Solutions in the mean time :
 
 * Using `debian:stretch` addresses certificates problems and `glibc` version
   (2.24). Dart needs >= 2.23.
-* Build the Dart SDK removing the "FATAL("Unrecognized ARM CPU architecture.");"
-  line.
+* Build the Dart SDK with the `--use-qemu` flag
 
 The example exe has successfully been ran and tested on a real OrangePi Zero.
 
-See bellow details about problems, **building Dart SDK**, example. The
-associated Dockerfile is `debian:stretch` based.
-
-Things to do :
-
-* Fill bug about certificates on `debian:buster`?
-* Wait about `glibc` bug fix?
-* Ask the Dart team how to manage SDK versions (fetch, git tags?)
-* Ask the Dart team to provide and maintain a `qemu/pi/armv7` Dart package?
-
-To build the docker image :
+1. Build and run the docker image.
 
 ```
 $ docker buildx build --platform linux/arm/v7 -t dart-armv7-qemu \
   -f at-buildimage/Dockerfile .
+$ docker run -ti dart-armv7-qemu
 ```
 
-## Identified problems & possible solutions
+2. Build a `armhf/qemu` Dart SDK and install it into the running container (see
+   "Building a new SDK" bellow). At this time of writing, the Dart SDK version
+   is `2.14.0-250.0.dev`.
+
+3. Build and run the example (see "Building the example" bellow).
+
+## Building a new SDK
+
+I removed this fatal line and built a new Dart arm SDK **on the x64 host**,
+following instructions on :
+
+* <https://github.com/dart-lang/sdk/wiki/Building>
+* <https://github.com/dart-lang/sdk/wiki/Building-Dart-SDK-for-ARM-processors>
+
+Downloading sources :
+
+```
+$ sudo apt-get install g++-multilib git python3 curl
+$ sudo apt-get install g++-arm-linux-gnueabihf
+$ git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+$ export PATH="$PATH:$PWD/depot_tools"
+$ mkdir dart-sdk
+$ cd dart-sdk
+```
+
+You should have a quick connection here or launch the process and go to beach :
+
+```
+$ fetch dart
+Running: gclient root
+...
+Receiving objects:   8% (102826/1145300)
+...
+Syncing projects: 100% (110/110), done.
+
+________ running 'python3 sdk/build/linux/sysroot_scripts/install-sysroot.py --arch i386' in '/home/alain/Projects/articles/travail/dart-sdk'
+Installing Debian Jessie i386 root image: /home/alain/Projects/articles/travail/dart-sdk/sdk/build/linux/debian_jessie_i386-sysroot
+Downloading https://commondatastorage.googleapis.com/chrome-linux-sysroot/toolchain/7031a828c5dcedc937bbf375c42daab08ca6162f/debian_jessie_i386_sysroot.tgz
+Hook 'python3 sdk/build/linux/sysroot_scripts/install-sysroot.py --arch i386' took 65.02 secs
+Running hooks:  33% ( 2/ 6) sysroot_amd64
+________ running 'python3 sdk/build/linux/sysroot_scripts/install-sysroot.py --arch amd64' in '/home/alain/Projects/articles/travail/dart-sdk'
+Installing Debian Jessie amd64 root image: /home/alain/Projects/articles/travail/dart-sdk/sdk/build/linux/debian_jessie_amd64-sysroot
+Downloading https://commondatastorage.googleapis.com/chrome-linux-sysroot/toolchain/7031a828c5dcedc937bbf375c42daab08ca6162f/debian_jessie_amd64_sysroot.tgz
+Hook 'python3 sdk/build/linux/sysroot_scripts/install-sysroot.py --arch amd64' took 59.61 secs
+Running hooks:  50% ( 3/ 6) sysroot_amd64
+________ running 'python3 sdk/build/linux/sysroot_scripts/install-sysroot.py --arch arm' in '/home/alain/Projects/articles/travail/dart-sdk'
+Installing Debian Jessie arm root image: /home/alain/Projects/articles/travail/dart-sdk/sdk/build/linux/debian_jessie_arm-sysroot
+Downloading https://commondatastorage.googleapis.com/chrome-linux-sysroot/toolchain/7031a828c5dcedc937bbf375c42daab08ca6162f/debian_jessie_arm_sysroot.tgz
+Hook 'python3 sdk/build/linux/sysroot_scripts/install-sysroot.py --arch arm' took 50.02 secs
+Running hooks:  66% ( 4/ 6) sysroot_amd64
+________ running 'python3 sdk/build/linux/sysroot_scripts/install-sysroot.py --arch arm64' in '/home/alain/Projects/articles/travail/dart-sdk'
+Installing Debian Jessie arm64 root image: /home/alain/Projects/articles/travail/dart-sdk/sdk/build/linux/debian_jessie_arm64-sysroot
+Downloading https://commondatastorage.googleapis.com/chrome-linux-sysroot/toolchain/7031a828c5dcedc937bbf375c42daab08ca6162f/debian_jessie_arm64_sysroot.tgz
+Hook 'python3 sdk/build/linux/sysroot_scripts/install-sysroot.py --arch arm64' took 49.14 secs
+Running hooks: 100% (6/6), done.
+Running: git submodule foreach 'git config -f $toplevel/.git/config submodule.$name.ignore all'
+Running: git config --add remote.origin.fetch '+refs/tags/*:refs/tags/*'
+Running: git config diff.ignoreSubmodules all
+```
+
+Then, build the `armhf/qemu` SDK :
+
+```
+$ cd sdk
+$ ./tools/build.py --no-goma -m release -a arm --arm-float-abi hard --use-qemu create_sdk
+Done. Made 385 targets from 93 files in 257ms
+ninja -C out/ReleaseXARM create_sdk
+ninja: Entering directory `out/ReleaseXARM'
+[4615/4615] STAMP obj/create_sdk.stamp
+The build took 739.001 seconds
+$ (cd out/ReleaseXARM && zip -r dartsdk-linux-armhf-qemu dart-sdk)
+```
+
+You can now copy this new SDK to the armv7 running container :
+
+```
+$ docker ps
+CONTAINER ID   IMAGE
+96facecd1419   atsigncompany/buildimage:dart-armv7
+$ docker cp out/ReleaseXARM/dartsdk-linux-armhf-qemu.zip 96facecd1419:/root
+```
+
+Now back in the container :
+
+```
+# unzip dartsdk-linux-armhf-qemu.zip
+# export PATH=/root/dart-sdk/bin:$PATH
+# dart
+  ╔════════════════════════════════════════════════════════════════════════════╗
+  ║ The Dart tool uses Google Analytics to report feature usage statistics     ║
+  ║ and to send basic crash reports. This data is used to help improve the     ║
+  ║ Dart platform and tools over time.                                         ║
+  ║                                                                            ║
+  ║ To disable reporting of analytics, run:                                    ║
+  ║                                                                            ║
+  ║   dart --disable-analytics                                                 ║
+  ║                                                                            ║
+  ╚════════════════════════════════════════════════════════════════════════════╝
+
+A command-line utility for Dart development.
+
+Usage: dart <command|dart-file> [arguments]
+
+Global options:
+-h, --help                 Print this usage information.
+-v, --verbose              Show additional command output.
+    --version              Print the Dart SDK version.
+    --enable-analytics     Enable analytics.
+    --disable-analytics    Disable analytics.
+
+Available commands:
+  analyze   Analyze Dart code in a directory.
+  compile   Compile Dart to various formats.
+  create    Create a new Dart project.
+  fix       Apply automated fixes to Dart source code.
+  format    Idiomatically format Dart source code.
+  migrate   Perform null safety migration on a project.
+  pub       Work with packages.
+  run       Run a Dart program.
+  test      Run tests for a project.
+
+Run "dart help <command>" for more information about a command.
+See https://dart.dev/tools/dart-tool for detailed documentation.
+```
+
+## Building the example
+
+Get dependencies :
+
+```
+# cd restserver
+# dart pub get
+Resolving dependencies... (4.7s)
+...
+Got dependencies!
+```
+
+Compile the Dart source :
+
+```
+# dart compile exe bin/courses_server.dart -o ./coursesd
+Info: Compiling with sound null safety
+Generated: /root/restserver/coursesd
+```
+
+And run the Dart executable :
+
+```
+./coursesd
+Loaded data from file
+Registered Courses REST API
+Listen SSE clients
+Server launched on http://0.0.0.0:8067
+```
+
+## Deprecated : Problems with debian:buster (investigations)
+
+### Identified problems & possible solutions
 
 * Certificates : install the right certificates before downloading Dart SDK
 * Unrecognized ARM CPU architecture : fake Pi `/proc/cpuinfo` see
@@ -58,8 +205,6 @@ $ docker buildx build --platform linux/arm/v7 -t dart-armv7-qemu \
 * Filesystem inode 32 guest on 64 host (qemu): use `glibc` <= `2.27`
   <https://bugs.launchpad.net/qemu/+bug/1805913>. Debian Jessie has `2.19`
 * Illegal instruction(4) : Use `gdb` to find some clues...
-
-## Experiments
 
 ### Certificates problem
 
@@ -122,126 +267,6 @@ In `runtime/vm/cpu_arm.cc` :
     FATAL("Unrecognized ARM CPU architecture.");
 #endif
   }
-```
-
-### Building a new SDK
-
-I removed this fatal line and built a new Dart arm SDK **on the x64 host**,
-following instructions on :
-
-* <https://github.com/dart-lang/sdk/wiki/Building>
-* <https://github.com/dart-lang/sdk/wiki/Building-Dart-SDK-for-ARM-processors>
-
-Downloading sources :
-
-```
-$ sudo apt-get install g++-multilib git python3 curl
-$ sudo apt-get install g++-arm-linux-gnueabihf
-$ git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
-$ export PATH="$PATH:$PWD/depot_tools"
-$ mkdir dart-sdk
-$ cd dart-sdk
-```
-
-You should have a quick connection here or launch the process and go to beach :
-
-```
-$ fetch dart
-Running: gclient root
-...
-Receiving objects:   8% (102826/1145300)
-...
-Syncing projects: 100% (110/110), done.
-
-________ running 'python3 sdk/build/linux/sysroot_scripts/install-sysroot.py --arch i386' in '/home/alain/Projects/articles/travail/dart-sdk'
-Installing Debian Jessie i386 root image: /home/alain/Projects/articles/travail/dart-sdk/sdk/build/linux/debian_jessie_i386-sysroot
-Downloading https://commondatastorage.googleapis.com/chrome-linux-sysroot/toolchain/7031a828c5dcedc937bbf375c42daab08ca6162f/debian_jessie_i386_sysroot.tgz
-Hook 'python3 sdk/build/linux/sysroot_scripts/install-sysroot.py --arch i386' took 65.02 secs
-Running hooks:  33% ( 2/ 6) sysroot_amd64
-________ running 'python3 sdk/build/linux/sysroot_scripts/install-sysroot.py --arch amd64' in '/home/alain/Projects/articles/travail/dart-sdk'
-Installing Debian Jessie amd64 root image: /home/alain/Projects/articles/travail/dart-sdk/sdk/build/linux/debian_jessie_amd64-sysroot
-Downloading https://commondatastorage.googleapis.com/chrome-linux-sysroot/toolchain/7031a828c5dcedc937bbf375c42daab08ca6162f/debian_jessie_amd64_sysroot.tgz
-Hook 'python3 sdk/build/linux/sysroot_scripts/install-sysroot.py --arch amd64' took 59.61 secs
-Running hooks:  50% ( 3/ 6) sysroot_amd64
-________ running 'python3 sdk/build/linux/sysroot_scripts/install-sysroot.py --arch arm' in '/home/alain/Projects/articles/travail/dart-sdk'
-Installing Debian Jessie arm root image: /home/alain/Projects/articles/travail/dart-sdk/sdk/build/linux/debian_jessie_arm-sysroot
-Downloading https://commondatastorage.googleapis.com/chrome-linux-sysroot/toolchain/7031a828c5dcedc937bbf375c42daab08ca6162f/debian_jessie_arm_sysroot.tgz
-Hook 'python3 sdk/build/linux/sysroot_scripts/install-sysroot.py --arch arm' took 50.02 secs
-Running hooks:  66% ( 4/ 6) sysroot_amd64
-________ running 'python3 sdk/build/linux/sysroot_scripts/install-sysroot.py --arch arm64' in '/home/alain/Projects/articles/travail/dart-sdk'
-Installing Debian Jessie arm64 root image: /home/alain/Projects/articles/travail/dart-sdk/sdk/build/linux/debian_jessie_arm64-sysroot
-Downloading https://commondatastorage.googleapis.com/chrome-linux-sysroot/toolchain/7031a828c5dcedc937bbf375c42daab08ca6162f/debian_jessie_arm64_sysroot.tgz
-Hook 'python3 sdk/build/linux/sysroot_scripts/install-sysroot.py --arch arm64' took 49.14 secs
-Running hooks: 100% (6/6), done.
-Running: git submodule foreach 'git config -f $toplevel/.git/config submodule.$name.ignore all'
-Running: git config --add remote.origin.fetch '+refs/tags/*:refs/tags/*'
-Running: git config diff.ignoreSubmodules all
-```
-
-Then, do some changes in the source code and build the arm SDK :
-
-```
-$ nano sdk/runtime/vm/cpu_arm.cc
-$ cd sdk
-$ ./tools/build.py --no-goma -m release -a arm create_sdk
-Done. Made 385 targets from 93 files in 257ms
-ninja -C out/ReleaseXARM create_sdk
-ninja: Entering directory `out/ReleaseXARM'
-[4615/4615] STAMP obj/create_sdk.stamp
-The build took 739.001 seconds
-$ (cd out/ReleaseXARM && zip -r dartsdk-linux-armhf dart-sdk)
-```
-
-You can now copy this new SDK to the armv7 running container :
-
-```
-$ docker ps
-CONTAINER ID   IMAGE
-96facecd1419   atsigncompany/buildimage:dart-armv7
-$ docker cp out/ReleaseXARM/dartsdk-linux-armhf.zip 96facecd1419:/root
-```
-
-Now back in the container :
-
-```
-# unzip dartsdk-linux-armhf.zip
-# export PATH=/root/dart-sdk/bin:$PATH
-# dart
-  ╔════════════════════════════════════════════════════════════════════════════╗
-  ║ The Dart tool uses Google Analytics to report feature usage statistics     ║
-  ║ and to send basic crash reports. This data is used to help improve the     ║
-  ║ Dart platform and tools over time.                                         ║
-  ║                                                                            ║
-  ║ To disable reporting of analytics, run:                                    ║
-  ║                                                                            ║
-  ║   dart --disable-analytics                                                 ║
-  ║                                                                            ║
-  ╚════════════════════════════════════════════════════════════════════════════╝
-
-A command-line utility for Dart development.
-
-Usage: dart <command|dart-file> [arguments]
-
-Global options:
--h, --help                 Print this usage information.
--v, --verbose              Show additional command output.
-    --version              Print the Dart SDK version.
-    --enable-analytics     Enable analytics.
-    --disable-analytics    Disable analytics.
-
-Available commands:
-  analyze   Analyze Dart code in a directory.
-  compile   Compile Dart to various formats.
-  create    Create a new Dart project.
-  fix       Apply automated fixes to Dart source code.
-  format    Idiomatically format Dart source code.
-  migrate   Perform null safety migration on a project.
-  pub       Work with packages.
-  run       Run a Dart program.
-  test      Run tests for a project.
-
-Run "dart help <command>" for more information about a command.
-See https://dart.dev/tools/dart-tool for detailed documentation.
 ```
 
 ### Return of the certificates problem
