@@ -15,6 +15,33 @@ $ git clone https://github.com/abasty/at_dockerfiles.git
 $ git checkout experiment/armv7
 ```
 
+## Successful armv7 build in Docker
+
+Identified so far:
+
+* Bug on debian:buster about certificates
+* Bug on libc6 >= 2.28 (stat files on q-emulated 32bits guest running on 64bits
+  host)
+* Problem on Dart SDK configuration for arm32 on emulated guest.
+
+Solution in the mean time :
+
+* Using debian:stretch addresses certificates problems and libc6 version (2.24).
+  Dart needs >= 2.23.
+* Build the Dart SDK removing the "FATAL("Unrecognized ARM CPU architecture.");"
+  line.
+
+The example exe has successfully been ran and tested on a real OrangePi Zero.
+
+See bellow details about problems, building Dart SDK, example. The associated
+Dockerfile is debian:stretch based.
+
+Things to do :
+
+* Fill bug about certificates on debian:buster?
+* Wait about libc6 bug fix?
+* Ask Dart team to provide and maintain a Pi/armv7 qemu Dart package?
+
 ## Identified problems & possible solutions
 
 * Certificates : install the right certificates before downloading Dart SDK
@@ -336,3 +363,26 @@ running a Debian Buster armhf kernel.
 ### Who has seen Jessie ?
 
 TODO: Try it in Debian Jessie...
+
+
+### Debian stretch
+
+<https://packages.debian.org/fr/source/stretch/glibc> 2.24
+
+### arm64 + fake /proc/cpuinfo
+
+```
+$ docker buildx build --platform linux/arm64 -t atsigncompany/buildimage:dart-arm64 \
+  -f at-buildimage/Dockerfile .
+$ docker run -ti --platform linux/arm64 \
+  --mount type=bind,source=$PWD/at-buildimage/cpuinfo.OrangePiZero,target=/proc/cpuinfo \
+  atsigncompany/buildimage:dart-arm64
+# dpkg --add-architecture armhf
+# apt update
+# apt install libc6:armhf
+# curl -fLO https://storage.googleapis.com/dart-archive/channels/stable/release/2.13.3/sdk/dartsdk-linux-arm-release.zip
+# unzip dartsdk-linux-arm-release.zip
+# ./dart-sdk/bin/dart
+===== CRASH =====
+si_signo=Illegal instruction(4), si_code=2, si_addr=0xfae8e5a8
+```

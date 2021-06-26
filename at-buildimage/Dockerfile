@@ -1,4 +1,4 @@
-FROM debian:buster-slim
+FROM debian:stretch-slim
 
 ARG DART_CHANNEL="stable"
 ARG DART_VERSION="2.13.0"
