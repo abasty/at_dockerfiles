@@ -1,17 +1,42 @@
-name: BuildAll
+name: AutoBuildAll
 
 on:
   workflow_dispatch:
-    inputs:
-      dartversion:
-        description: 'Dart SDK stable version'
-        required: true
-        default: '2.13.0'
+  schedule:
+    - cron: '42 7 * * *' # At 0742 each day
 
 jobs:
+  check_for_new_stable:
+    runs-on: ubuntu-latest
+    outputs:
+      dartversion: ${{ steps.dartversion.outputs.dartversion }}
+    steps:
+      - name: checkout repo content
+        uses: actions/checkout@v2.3.4 # checkout the repository content to github runner.
+
+      - id: dartversion
+        name: Check stable version
+        run: |
+          DDURL="https://raw.githubusercontent.com/dart-lang/dart-docker/main/versions.json"
+          curl -s $DDURL | jq -r .stable.version > DART_STABLE_VERSION
+          if [ -z "$(git status --porcelain)" ]; then 
+            echo 'No new stable release of Dart'
+            echo "::set-output name=dartversion::NOTNEW"
+            exit 0
+          else
+            DART_VERSION=$(cat DART_STABLE_VERSION)
+            echo "::set-output name=dartversion::$DART_VERSION"
+            git config --global user.name 'Release Check Action'
+            git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -am "New Dart stable version $DART_VERSION"
+            git push
+          fi          
+  
   build_multi_arch_images:
+    needs: [check_for_new_stable]
+    if: ${{ needs.check_for_new_stable.outputs.dartversion != 'NOTNEW' }}
     env:
-      DART_VERSION: ${{ github.event.inputs.dartversion }}
+      DART_VERSION: ${{ needs.check_for_new_stable.outputs.dartversion }}
     runs-on: ubuntu-latest
     steps:
       - name: Set up QEMU
@@ -74,7 +99,7 @@ jobs:
           key: ${{ secrets.CICD_SSH_KEY }}
           script: |
             export ARCH="arm64"
-            export DART_VERSION="${{ github.event.inputs.dartversion }}"
+            export DART_VERSION="${{ needs.check_for_new_stable.outputs.dartversion }}"
             docker pull atsigncompany/buildimage:"$DART_VERSION"
             docker pull atsigncompany/dartshowplatform:"$DART_VERSION"
             docker tag atsigncompany/buildimage:"$DART_VERSION" atsigncompany/buildimage:"$DART_VERSION"-"$ARCH"
@@ -90,7 +115,7 @@ jobs:
           key: ${{ secrets.CICD_SSH_KEY }}
           script: |
             export ARCH="arm"
-            export DART_VERSION="${{ github.event.inputs.dartversion }}"
+            export DART_VERSION="${{ needs.check_for_new_stable.outputs.dartversion }}"
             cd /home/pi/git/github.com/atsign-company/at_dockerfiles
             git pull
             docker build -t atsigncompany/buildimage:"$DART_VERSION"-"$ARCH" \
