@@ -42,7 +42,7 @@ The example exe has successfully been ran and tested on a real OrangePi Zero.
 
 ```
 $ docker buildx build --platform linux/arm/v7 -t dart-armv7-qemu \
-  -f at-buildimage/Dockerfile .
+  -f at-buildimage/Dockerfile-armhf-qemu .
 $ docker run -ti dart-armv7-qemu
 ```
 
